@@ -18,7 +18,17 @@ cv2.imwrite('original.jpg', image)
 cv2.imwrite('red_buoy_mask.jpg', mask)
 cv2.imwrite('detected_buoy.jpg', result)
 
-print("Images saved: original.jpg, red_buoy_mask.jpg, detected_buoy.jpg")
+contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+for cnt in contours:
+    area = cv2.contourArea(cnt)
+    if area > 70:  # Ignore tiny noise
+        x, y, w, h = cv2.boundingRect(cnt)
+        cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+# Save the image with bounding boxes
+cv2.imwrite('bounding_boxes.jpg', image)
+
+print("Images saved: original.jpg, red_buoy_mask.jpg, detected_buoy.jpg, bounding_boxes.jpg")
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
