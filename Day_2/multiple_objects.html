@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Obstacle CBF Vector Analysis</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .simulation-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .math-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        canvas {
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #0a0a0a;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .control-group h5 {
+            margin: 0 0 5px 0;
+            color: #ffd700;
+            font-size: 0.9em;
+        }
+
+        .slider {
+            width: 100%;
+            margin: 3px 0;
+        }
+
+        .math-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #00ff88;
+        }
+
+        .math-title {
+            color: #ffd700;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .formula {
+            background: #1a1a1a;
+            padding: 8px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 8px 0;
+            color: #00ff88;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+
+        .vector-display {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+
+        .vector-item {
+            margin: 5px 0;
+            padding: 3px;
+            border-radius: 3px;
+        }
+
+        .desired { background: rgba(255, 193, 7, 0.2); color: #FFC107; }
+        .repulsion { background: rgba(244, 67, 54, 0.2); color: #F44336; }
+        .tangent { background: rgba(156, 39, 176, 0.2); color: #9C27B0; }
+        .final { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+
+        .obstacle-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 0.85em;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .legend-item {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .legend-item.true-obs { border-color: #F44336; }
+        .legend-item.perceived-obs { border-color: #FF9800; }
+        .legend-item.robot-path { border-color: #2196F3; }
+        .legend-item.desired-vec { border-color: #FFC107; }
+        .legend-item.repulsion-vec { border-color: #F44336; }
+        .legend-item.tangent-vec { border-color: #9C27B0; }
+        .legend-item.final-vec { border-color: #4CAF50; }
+
+        .legend-symbol {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        .status-panel {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .highlight {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2em;
+            }
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🤖 Multi-Obstacle CBF Vector Mathematics 📐</h1>
+        
+        <div class="main-content">
+            <div class="simulation-panel">
+                <canvas id="cbfCanvas" width="700" height="700"></canvas>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <h5>🎯 Goal Distance</h5>
+                        <input type="range" class="slider" id="goalDistance" min="8" max="15" step="0.5" value="12">
+                        <div id="goalValue">12</div>
+                    </div>
+                    <div class="control-group">
+                        <h5>⚡ Robot Speed</h5>
+                        <input type="range" class="slider" id="robotSpeed" min="0.3" max="2" step="0.1" value="1">
+                        <div id="speedValue">1.0</div>
+                    </div>
+                    <div class="control-group">
+                        <h5>🔍 CV Noise</h5>
+                        <input type="range" class="slider" id="cvNoise" min="0" max="0.5" step="0.05" value="0.15">
+                        <div id="noiseValue">0.15</div>
+                    </div>
+                    <div class="control-group">
+                        <h5>🛡️ Safety Margin</h5>
+                        <input type="range" class="slider" id="safetyMargin" min="0.5" max="2" step="0.1" value="1.2">
+                        <div id="safetyValue">1.2</div>
+                    </div>
+                    <div class="control-group">
+                        <h5>🎮 Pause/Play</h5>
+                        <button id="pauseBtn" style="padding: 5px 10px; border: none; border-radius: 5px; background: #4CAF50; color: white; cursor: pointer;">⏸️ Pause</button>
+                    </div>
+                </div>
+
+                <div class="status-panel">
+                    <div><strong>🎯 Distance to Goal:</strong> <span id="goalDistance">0</span></div>
+                    <div><strong>🚧 Closest Obstacle:</strong> <span id="closestObs">0</span></div>
+                    <div><strong>⏱️ Simulation Time:</strong> <span id="simTime">0</span>s</div>
+                </div>
+            </div>
+
+            <div class="math-panel">
+                <h3 style="color: #ffd700; text-align: center; margin-top: 0;">📊 Real-Time Vector Analysis</h3>
+                
+                <div class="math-section">
+                    <div class="math-title">🎯 Desired Vector</div>
+                    <div class="formula">v_des = (goal - robot) / ||goal - robot||</div>
+                    <div class="vector-display">
+                        <div class="vector-item desired">v_des = <span id="desiredVector">[0, 0]</span></div>
+                        <div class="vector-item desired">magnitude = <span id="desiredMag">0</span></div>
+                    </div>
+                </div>
+
+                <div class="math-section">
+                    <div class="math-title">🚧 Per-Obstacle Analysis</div>
+                    <div id="obstacleAnalysis">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <div class="math-section">
+                    <div class="math-title">🔄 Vector Composition</div>
+                    <div class="formula">u_final = v_des + Σ(repulsion_i + tangent_i)</div>
+                    <div class="vector-display">
+                        <div class="vector-item final">u_final = <span id="finalVector">[0, 0]</span></div>
+                        <div class="vector-item final">speed = <span id="finalSpeed">0</span></div>
+                    </div>
+                </div>
+
+                <div class="math-section">
+                    <div class="math-title">📈 CBF Mathematics</div>
+                    <div class="formula">h_i = ||x - obs_i|| - (r_i + safety_margin)</div>
+                    <div class="formula">repulsion_i = α * (safety - dist) / safety * grad_h_i</div>
+                    <div class="formula">tangent_i = β * perpendicular(grad_h_i)</div>
+                    <div style="font-size: 0.85em; color: #ccc; margin-top: 8px;">
+                        Where grad_h_i points away from obstacle i, and tangent helps slide around it.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item true-obs">
+                <div class="legend-symbol" style="background: #F44336;"></div>
+                <div><strong>True Obstacles:</strong> Red circles (ground truth)</div>
+            </div>
+            <div class="legend-item perceived-obs">
+                <div class="legend-symbol" style="background: #FF9800;"></div>
+                <div><strong>Perceived Obstacles:</strong> Orange crosses (CV detection)</div>
+            </div>
+            <div class="legend-item robot-path">
+                <div class="legend-symbol" style="background: #2196F3;"></div>
+                <div><strong>Robot Path:</strong> Blue trail showing movement</div>
+            </div>
+            <div class="legend-item desired-vec">
+                <div class="legend-symbol" style="background: #FFC107;"></div>
+                <div><strong>Desired Vector:</strong> Yellow arrow toward goal</div>
+            </div>
+            <div class="legend-item repulsion-vec">
+                <div class="legend-symbol" style="background: #F44336;"></div>
+                <div><strong>Repulsion Vectors:</strong> Red arrows away from obstacles</div>
+            </div>
+            <div class="legend-item tangent-vec">
+                <div class="legend-symbol" style="background: #9C27B0;"></div>
+                <div><strong>Tangent Vectors:</strong> Purple arrows for sliding motion</div>
+            </div>
+            <div class="legend-item final-vec">
+                <div class="legend-symbol" style="background: #4CAF50;"></div>
+                <div><strong>Final Vector:</strong> Green arrow (composite motion)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cbfCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Simulation state
+        let isPaused = false;
+        let time = 0;
+        let robotPos = { x: 50, y: 650 };
+        let goalPos = { x: 650, y: 50 };
+        let trail = [{ ...robotPos }];
+        let maxTrailLength = 200;
+        
+        // Moving obstacles
+        let obstacles = [
+            { pos: { x: 300, y: 400 }, vel: { x: -0.3, y: 0.2 }, radius: 45, id: 0 },
+            { pos: { x: 500, y: 150 }, vel: { x: -0.2, y: 0.4 }, radius: 35, id: 1 },
+            { pos: { x: 150, y: 500 }, vel: { x: 0.25, y: -0.15 }, radius: 40, id: 2 },
+        ];
+        
+        // Simulation parameters
+        let robotSpeed = 1.0;
+        let cvNoise = 0.15;
+        let safetyMargin = 1.2;
+        
+        // Vector analysis data
+        let vectorAnalysis = {
+            desired: { x: 0, y: 0 },
+            repulsions: [],
+            tangents: [],
+            final: { x: 0, y: 0 }
+        };
+        
+        // Controls
+        const goalSlider = document.getElementById('goalDistance');
+        const speedSlider = document.getElementById('robotSpeed');
+        const noiseSlider = document.getElementById('cvNoise');
+        const safetySlider = document.getElementById('safetyMargin');
+        const pauseBtn = document.getElementById('pauseBtn');
+        
+        goalSlider.addEventListener('input', (e) => {
+            const dist = parseFloat(e.target.value) * 45;
+            goalPos.x = robotPos.x + dist * 0.7;
+            goalPos.y = robotPos.y - dist * 0.7;
+            goalPos.x = Math.max(50, Math.min(650, goalPos.x));
+            goalPos.y = Math.max(50, Math.min(650, goalPos.y));
+            document.getElementById('goalValue').textContent = e.target.value;
+        });
+        
+        speedSlider.addEventListener('input', (e) => {
+            robotSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        
+        noiseSlider.addEventListener('input', (e) => {
+            cvNoise = parseFloat(e.target.value);
+            document.getElementById('noiseValue').textContent = e.target.value;
+        });
+        
+        safetySlider.addEventListener('input', (e) => {
+            safetyMargin = parseFloat(e.target.value);
+            document.getElementById('safetyValue').textContent = e.target.value;
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? '▶️ Play' : '⏸️ Pause';
+        });
+        
+        function addNoise(value, noiseLevel) {
+            return value + (Math.random() - 0.5) * 2 * noiseLevel * 20;
+        }
+        
+        function distance(p1, p2) {
+            return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+        }
+        
+        function normalize(vec) {
+            const mag = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+            return mag > 0 ? { x: vec.x / mag, y: vec.y / mag, magnitude: mag } : { x: 0, y: 0, magnitude: 0 };
+        }
+        
+        function fakeCV(obstacles) {
+            return obstacles.map(obs => ({
+                pos: {
+                    x: addNoise(obs.pos.x, cvNoise),
+                    y: addNoise(obs.pos.y, cvNoise)
+                },
+                radius: obs.radius,
+                id: obs.id
+            }));
+        }
+        
+        function controlBarrierFunction(robot, goal, perceivedObstacles) {
+            // Desired vector
+            const desired = normalize({
+                x: goal.x - robot.x,
+                y: goal.y - robot.y
+            });
+            
+            let totalRepulsion = { x: 0, y: 0 };
+            let totalTangent = { x: 0, y: 0 };
+            let repulsions = [];
+            let tangents = [];
+            
+            // Process each obstacle
+            perceivedObstacles.forEach(obs => {
+                const diff = { x: robot.x - obs.pos.x, y: robot.y - obs.pos.y };
+                const dist = Math.sqrt(diff.x * diff.x + diff.y * diff.y);
+                const safetyRadius = obs.radius + safetyMargin * 20;
+                
+                if (dist < safetyRadius + 50) { // Influence zone
+                    const gradient = { x: diff.x / dist, y: diff.y / dist };
+                    
+                    if (dist < safetyRadius) {
+                        // Repulsion force
+                        const repulsionStrength = (safetyRadius - dist) / safetyRadius;
+                        const repulsion = {
+                            x: gradient.x * repulsionStrength * 0.8,
+                            y: gradient.y * repulsionStrength * 0.8
+                        };
+                        
+                        // Tangent force (perpendicular to gradient)
+                        const tangent = {
+                            x: -gradient.y * repulsionStrength * 0.4,
+                            y: gradient.x * repulsionStrength * 0.4
+                        };
+                        
+                        totalRepulsion.x += repulsion.x;
+                        totalRepulsion.y += repulsion.y;
+                        totalTangent.x += tangent.x;
+                        totalTangent.y += tangent.y;
+                        
+                        repulsions.push({ ...repulsion, obsId: obs.id, strength: repulsionStrength });
+                        tangents.push({ ...tangent, obsId: obs.id, strength: repulsionStrength });
+                    }
+                }
+            });
+            
+            // Combine all forces
+            const final = {
+                x: desired.x * 0.5 + totalRepulsion.x + totalTangent.x,
+                y: desired.y * 0.5 + totalRepulsion.y + totalTangent.y
+            };
+            
+            // Limit speed
+            const speed = Math.sqrt(final.x * final.x + final.y * final.y);
+            const maxSpeed = robotSpeed;
+            if (speed > maxSpeed) {
+                final.x = (final.x / speed) * maxSpeed;
+                final.y = (final.y / speed) * maxSpeed;
+            }
+            
+            // Store for visualization
+            vectorAnalysis = {
+                desired: desired,
+                repulsions: repulsions,
+                tangents: tangents,
+                final: final,
+                totalRepulsion: totalRepulsion,
+                totalTangent: totalTangent
+            };
+            
+            return final;
+        }
+        
+        function drawArrow(start, direction, length, color, width = 2) {
+            if (Math.abs(direction.x) < 0.001 && Math.abs(direction.y) < 0.001) return;
+            
+            const end = {
+                x: start.x + direction.x * length,
+                y: start.y + direction.y * length
+            };
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            // Arrow head
+            const angle = Math.atan2(direction.y, direction.x);
+            const headLen = 8;
+            ctx.beginPath();
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI/6), 
+                      end.y - headLen * Math.sin(angle - Math.PI/6));
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI/6), 
+                      end.y - headLen * Math.sin(angle + Math.PI/6));
+            ctx.stroke();
+        }
+        
+        function updateMathDisplay() {
+            // Update desired vector display
+            document.getElementById('desiredVector').textContent = 
+                `[${vectorAnalysis.desired.x.toFixed(2)}, ${vectorAnalysis.desired.y.toFixed(2)}]`;
+            document.getElementById('desiredMag').textContent = 
+                vectorAnalysis.desired.magnitude?.toFixed(3) || '0';
+            
+            // Update final vector display
+            document.getElementById('finalVector').textContent = 
+                `[${vectorAnalysis.final.x.toFixed(2)}, ${vectorAnalysis.final.y.toFixed(2)}]`;
+            document.getElementById('finalSpeed').textContent = 
+                Math.sqrt(vectorAnalysis.final.x ** 2 + vectorAnalysis.final.y ** 2).toFixed(3);
+            
+            // Update obstacle analysis
+            const analysisDiv = document.getElementById('obstacleAnalysis');
+            analysisDiv.innerHTML = '';
+            
+            obstacles.forEach((obs, i) => {
+                const dist = distance(robotPos, obs.pos);
+                const safetyRadius = obs.radius + safetyMargin * 20;
+                const repulsion = vectorAnalysis.repulsions.find(r => r.obsId === obs.id);
+                const tangent = vectorAnalysis.tangents.find(t => t.obsId === obs.id);
+                
+                const obsDiv = document.createElement('div');
+                obsDiv.className = 'obstacle-info';
+                obsDiv.innerHTML = `
+                    <strong>Obstacle ${i + 1}:</strong><br>
+                    Distance: ${dist.toFixed(1)}px<br>
+                    Safety Zone: ${safetyRadius.toFixed(1)}px<br>
+                    ${repulsion ? `Repulsion: [${repulsion.x.toFixed(2)}, ${repulsion.y.toFixed(2)}]` : 'No repulsion'}<br>
+                    ${tangent ? `Tangent: [${tangent.x.toFixed(2)}, ${tangent.y.toFixed(2)}]` : 'No tangent'}
+                `;
+                analysisDiv.appendChild(obsDiv);
+            });
+            
+            // Update status
+            document.getElementById('goalDistance').textContent = distance(robotPos, goalPos).toFixed(1) + 'px';
+            const closestDist = Math.min(...obstacles.map(obs => distance(robotPos, obs.pos)));
+            document.getElementById('closestObs').textContent = closestDist.toFixed(1) + 'px';
+            document.getElementById('simTime').textContent = (time / 60).toFixed(1);
+        }
+        
+        function animate() {
+            if (!isPaused) {
+                // Update obstacle positions
+                obstacles.forEach(obs => {
+                    obs.pos.x += obs.vel.x;
+                    obs.pos.y += obs.vel.y;
+                    
+                    // Bounce off walls
+                    if (obs.pos.x < obs.radius || obs.pos.x > canvas.width - obs.radius) {
+                        obs.vel.x *= -1;
+                    }
+                    if (obs.pos.y < obs.radius || obs.pos.y > canvas.height - obs.radius) {
+                        obs.vel.y *= -1;
+                    }
+                });
+                
+                // CV perception with noise
+                const perceivedObs = fakeCV(obstacles);
+                
+                // Control
+                const control = controlBarrierFunction(robotPos, goalPos, perceivedObs);
+                
+                // Update robot
+                robotPos.x += control.x;
+                robotPos.y += control.y;
+                
+                // Keep robot in bounds
+                robotPos.x = Math.max(15, Math.min(canvas.width - 15, robotPos.x));
+                robotPos.y = Math.max(15, Math.min(canvas.height - 15, robotPos.y));
+                
+                // Update trail
+                trail.push({ ...robotPos });
+                if (trail.length > maxTrailLength) {
+                    trail.shift();
+                }
+                
+                time++;
+            }
+            
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Draw trail
+            ctx.strokeStyle = '#2196F3';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 1; i < trail.length; i++) {
+                ctx.globalAlpha = i / trail.length;
+                ctx.moveTo(trail[i-1].x, trail[i-1].y);
+                ctx.lineTo(trail[i].x, trail[i].y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            
+            // Draw true obstacles
+            obstacles.forEach((obs, i) => {
+                ctx.fillStyle = '#F44336';
+                ctx.beginPath();
+                ctx.arc(obs.pos.x, obs.pos.y, obs.radius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Safety zone
+                ctx.strokeStyle = '#FF5722';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(obs.pos.x, obs.pos.y, obs.radius + safetyMargin * 20, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Label
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.fillText(`O${i+1}`, obs.pos.x - 8, obs.pos.y + 4);
+            });
+            
+            // Draw perceived obstacles (with CV noise)
+            if (!isPaused) {
+                const perceivedObs = fakeCV(obstacles);
+                perceivedObs.forEach(obs => {
+                    ctx.strokeStyle = '#FF9800';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(obs.pos.x - 8, obs.pos.y - 8);
+                    ctx.lineTo(obs.pos.x + 8, obs.pos.y + 8);
+                    ctx.moveTo(obs.pos.x + 8, obs.pos.y - 8);
+                    ctx.lineTo(obs.pos.x - 8, obs.pos.y + 8);
+                    ctx.stroke();
+                });
+            }
+            
+            // Draw robot
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.arc(robotPos.x, robotPos.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw goal
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(goalPos.x, goalPos.y, 10, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw vectors
+            if (vectorAnalysis.desired) {
+                drawArrow(robotPos, vectorAnalysis.desired, 60, '#FFC107', 3);
+            }
+            
+            vectorAnalysis.repulsions?.forEach(rep => {
+                drawArrow(robotPos, rep, 50, '#F44336', 2);
+            });
+            
+            vectorAnalysis.tangents?.forEach(tan => {
+                drawArrow(robotPos, tan, 40, '#9C27B0', 2);
+            });
+            
+            if (vectorAnalysis.final) {
+                drawArrow(robotPos, normalize(vectorAnalysis.final), 70, '#4CAF50', 4);
+            }
+            
+            updateMathDisplay();
+            requestAnimationFrame(animate);
+        }
+        
+        // Start simulation
+        animate();
+    </script>
+</body>
+</html>
